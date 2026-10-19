@@ -70,4 +70,4 @@ Adaptação comunitária; não é uma release oficial do projeto ScummVM ou da A
 
 ### samples
 ![Menu inicial do ScummVM](docs/images/Sample-1.jpeg)
-(docs/images/Sample-2.jpeg)
+!(docs/images/Sample-2.jpeg)
