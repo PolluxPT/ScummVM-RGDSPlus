@@ -65,3 +65,14 @@ Calibration, preferences and the game list live in `ScummVM_RGDSPlus/config`; de
 - For a report, include firmware, game and release version, and attach `ScummVM_Arranque.txt` before launching again. Remove personal paths from the log if present.
 
 Community adaptation; not an official ScummVM or Anbernic release.
+
+## Samples
+
+![ ](docs/images/Sample-1.jpeg)
+![ ](docs/images/Sample-2.jpeg)
+![ ](docs/images/Sample-3.jpeg)
+![ ](docs/images/Sample-4.jpeg)
+![ ](docs/images/Sample-5.jpeg)
+![ ](docs/images/Sample-6.jpeg)
+![ ](docs/images/Sample-7.jpeg)
+
