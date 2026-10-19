@@ -65,3 +65,9 @@ Calibração, preferências e lista de jogos ficam em `ScummVM_RGDSPlus/config`;
 - Para reportar: indica o firmware, o jogo e a versão; anexa `ScummVM_Arranque.txt` antes de voltar a abrir a aplicação. Remove caminhos pessoais do registo se os houver.
 
 Adaptação comunitária; não é uma release oficial do projeto ScummVM ou da Anbernic.
+
+## Imagens
+
+### samples
+![Menu inicial do ScummVM](docs/images/Sample-1.jpeg)
+(docs/images/Sample-2.jpeg)
