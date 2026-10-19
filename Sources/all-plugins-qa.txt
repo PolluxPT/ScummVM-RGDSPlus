@@ -1,0 +1,57 @@
+Using configuration file: /workspace/scratch/50619cb4f7f3/qemu-all-plugins.ini
+Debuglevel (from command line): 9
+Reading plugins from plugin directory '/workspace/scratch/50619cb4f7f3'
+Couldn't open plugin directory 'plugins'
+Couldn't open plugin directory '/usr/local/lib/scummvm'
+Reading plugins from plugin directory '/workspace/scratch/50619cb4f7f3/scummvm-2026.4.0/plugins'
+Detection plugin found!
+Using SDL Video Driver "dummy"
+SDL Video Detecting OpenGL Features...
+SDL Video Detecting Anti-aliasing Support...
+Checking SDL Antialiasing Support With 2 Samples... No Window
+Checking SDL Antialiasing Support With 4 Samples... No Window
+Checking SDL Antialiasing Support With 8 Samples... No Window
+Checking SDL Antialiasing Support With 16 Samples... No Window
+Checking SDL Antialiasing Support With 32 Samples... No Window
+SDL Video OpenGL Feature Detection Complete
+Invalid joystick: 0
+creating SurfaceSDL graphics manager
+creating OpenGL graphics manager
+creating SurfaceSDL graphics manager
+Using SDL Audio Driver "dummy"
+Output sample rate: 44100 Hz
+Output buffer size: 1024 samples
+Output channels: 2
+Save states for target 'qa-pegasus' (gameid 'pegasus:pegasus'):
+  Slot Description                                           
+  ---- ------------------------------------------------------
+  0    AutoSave
+EnginePlugin could not be loaded for target 'qa-colony'
+EnginePlugin could not be loaded for target 'qa-agds'
+EnginePlugin could not be loaded for target 'qa-mutationofjb'
+EnginePlugin could not be loaded for target 'qa-playground3d'
+
+Save states for target 'qa-sci' (gameid 'sci:sci'):
+  Slot Description                                           
+  ---- ------------------------------------------------------
+  0    (Autosave)
+EnginePlugin could not be loaded for target 'qa-mediastation'
+EnginePlugin could not be loaded for target 'qa-immortal'
+EnginePlugin could not be loaded for target 'qa-cryo'
+EnginePlugin could not be loaded for target 'qa-macs2'
+EnginePlugin could not be loaded for target 'qa-lilliput'
+EnginePlugin could not be loaded for target 'qa-waynesworld'
+
+Save states for target 'qa-groovie' (gameid 'groovie:t7g'):
+  Slot Description                                           
+  ---- ------------------------------------------------------
+  -1   Reserved
+EnginePlugin could not be loaded for target 'qa-watchmaker'
+EnginePlugin could not be loaded for target 'qa-icb'
+EnginePlugin could not be loaded for target 'qa-testbed'
+
+Save states for target 'qa-cine' (gameid 'cine:fw'):
+  Slot Description                                           
+  ---- ------------------------------------------------------
+  0    Empty autosave
+EnginePlugin could not be loaded for target 'qa-startrek'

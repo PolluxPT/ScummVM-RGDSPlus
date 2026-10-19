@@ -1,0 +1,848 @@
+--- a/base/main.cpp
++++ b/base/main.cpp
+@@ -35,6 +35,7 @@
+ #include "base/commandLine.h"
+ #include "base/plugins.h"
+ #include "base/version.h"
++#include "base/rgds-calibration.h"
+ 
+ #include "common/archive.h"
+ #include "common/config-manager.h"
+@@ -637,6 +638,9 @@
+ 
+ 	// Now as the event manager is created, setup the keymapper
+ 	setupKeymapper(system);
++	const int rgdsCalibrationResult = runRgdsCalibrationIfRequested(system);
++	if (rgdsCalibrationResult >= 0)
++		return rgdsCalibrationResult;
+ 
+ #ifdef USE_UPDATES
+ 	if (!ConfMan.hasKey("updates_check") && g_system->getUpdateManager()) {
+--- a/base/module.mk
++++ b/base/module.mk
+@@ -3,6 +3,7 @@
+ MODULE_OBJS := \
+ 	test_new_standards.o \
+ 	main.o \
++	rgds-calibration.o \
+ 	commandLine.o \
+ 	plugins.o \
+ 	version.o
+--- a/backends/module.mk
++++ b/backends/module.mk
+@@ -229,7 +229,9 @@
+ 
+ ifdef USE_SDL2
+ MODULE_OBJS += \
+-	events/sdl/sdl2-events.o
++	events/sdl/sdl2-events.o \
++	events/sdl/rgds-touch.o \
++	events/sdl/rgds-volume.o
+ endif
+ 
+ ifdef USE_SDL3
+--- a/backends/events/sdl/sdl-events.h
++++ b/backends/events/sdl/sdl-events.h
+@@ -26,6 +26,7 @@
+ #include "backends/graphics/sdl/sdl-graphics.h"
+ 
+ #include "common/events.h"
++class RgdsTouchReader;
+ 
+ // Type names which changed between SDL 1.2 and SDL 2.
+ #if !SDL_VERSION_ATLEAST(2, 0, 0)
+@@ -62,6 +63,7 @@
+ 	void setEngineRunning(bool value);
+ 
+ protected:
++	RgdsTouchReader *_rgdsTouch;
+ 	/** Scroll lock state - since SDL doesn't track it */
+ 	bool _scrollLock;
+ 
+--- a/backends/events/sdl/sdl2-events.cpp
++++ b/backends/events/sdl/sdl2-events.cpp
+@@ -24,6 +24,7 @@
+ #if defined(SDL_BACKEND)
+ 
+ #include "backends/events/sdl/sdl-events.h"
++#include "backends/events/sdl/rgds-touch.h"
+ #include "backends/platform/sdl/sdl.h"
+ #include "backends/graphics/graphics.h"
+ #include "common/config-manager.h"
+@@ -77,6 +78,7 @@
+ 	  _lastHatPosition(SDL_HAT_CENTERED), _mouseX(0), _mouseY(0), _engineRunning(false)
+ 	  , _queuedFakeKeyUp(false), _fakeKeyUp(), _queuedFakeMouseScroll(0), _fakeMouseScroll(), _controller(nullptr)
+ 	  {
++	_rgdsTouch = new RgdsTouchReader();
+ 	int joystick_num = ConfMan.getInt("joystick_num");
+ 	if (joystick_num >= 0) {
+ 		// Initialize SDL joystick subsystem
+@@ -630,6 +632,8 @@
+ }
+ 
+ bool SdlEventSource::pollEvent(Common::Event &event) {
++	if (_rgdsTouch->active())
++		_rgdsTouch->pump(_graphicsManager ? _graphicsManager->getWindow()->getSDLWindow() : nullptr);
+ 	finishSimulatedMouseClicks();
+ 
+ 	// In case we still need to send a key up event for a key down from a
+@@ -656,13 +660,24 @@
+ 	}
+ 
+ 	if (_queuedFakeMouseMove) {
+-		event = _fakeMouseMove;
+ 		_queuedFakeMouseMove = false;
+-		return true;
++		if (!_rgdsTouch->recent()) {
++			event = _fakeMouseMove;
++			return true;
++		}
+ 	}
+ 
+ 	SDL_Event ev;
+ 	while (SDL_PollEvent(&ev)) {
++        if (_rgdsTouch->recent() &&
++            ((ev.type == SDL_MOUSEMOTION && ev.motion.which != RGDS_DIRECT_MOUSE_ID) ||
++             ((ev.type == SDL_MOUSEBUTTONDOWN || ev.type == SDL_MOUSEBUTTONUP) && ev.button.which != RGDS_DIRECT_MOUSE_ID)))
++            continue;
++        if (_rgdsTouch->active() &&
++            (ev.type == SDL_FINGERDOWN || ev.type == SDL_FINGERUP || ev.type == SDL_FINGERMOTION ||
++             ((ev.type == SDL_MOUSEMOTION) && ev.motion.which == SDL_TOUCH_MOUSEID) ||
++             ((ev.type == SDL_MOUSEBUTTONDOWN || ev.type == SDL_MOUSEBUTTONUP) && ev.button.which == SDL_TOUCH_MOUSEID)))
++            continue;
+ 		preprocessEvents(&ev);
+ 
+ 		// Supported touch gestures:
+--- a/backends/events/sdl/sdl-common-events.cpp
++++ b/backends/events/sdl/sdl-common-events.cpp
+@@ -24,6 +24,7 @@
+ #if defined(SDL_BACKEND)
+ 
+ #include "backends/events/sdl/sdl-events.h"
++#include "backends/events/sdl/rgds-touch.h"
+ #include "backends/platform/sdl/sdl.h"
+ #include "backends/graphics/graphics.h"
+ #include "common/config-manager.h"
+@@ -34,6 +35,7 @@
+ #include "gui/gui-manager.h"
+ 
+ SdlEventSource::~SdlEventSource() {
++	delete _rgdsTouch;
+ 	closeJoystick();
+ }
+ 
+--- a/backends/platform/sdl/sdl-window.cpp
++++ b/backends/platform/sdl/sdl-window.cpp
+@@ -499,6 +499,25 @@
+ 
+ 	if (!_window || oldNonUpdateableFlags != newNonUpdateableFlags) {
+ 		destroyWindow();
++#if !SDL_VERSION_ATLEAST(3, 0, 0)
++		// RG DS Plus test build: select an output without changing Weston settings.
++		const char *rgdsDisplay = getenv("SCUMMVM_RGDS_DISPLAY");
++		if (rgdsDisplay) {
++			const int count = SDL_GetNumVideoDisplays();
++			int selected = atoi(rgdsDisplay);
++			if (selected < 0 || selected >= count) selected = 0;
++			for (int i = 0; i < count; ++i) {
++				SDL_Rect bounds;
++				if (SDL_GetDisplayBounds(i, &bounds) == 0)
++					fprintf(stderr, "RGDS output %d: %s bounds=%d,%d %dx%d\n", i,
++						SDL_GetDisplayName(i), bounds.x, bounds.y, bounds.w, bounds.h);
++			}
++			_lastX = SDL_WINDOWPOS_CENTERED_DISPLAY(selected);
++			_lastY = SDL_WINDOWPOS_CENTERED_DISPLAY(selected);
++			fprintf(stderr, "RGDS selected output=%d; driver=%s; touch devices=%d\n",
++				selected, SDL_GetCurrentVideoDriver(), SDL_GetNumTouchDevices());
++		}
++#endif
+ #if SDL_VERSION_ATLEAST(3, 0, 0)
+ 		SDL_PropertiesID props = SDL_CreateProperties();
+ 		SDL_SetStringProperty(props, SDL_PROP_WINDOW_CREATE_TITLE_STRING, _windowCaption.c_str());
+--- a/backends/mixer/sdl/sdl-mixer.cpp
++++ b/backends/mixer/sdl/sdl-mixer.cpp
+@@ -24,6 +24,7 @@
+ #if defined(SDL_BACKEND)
+ 
+ #include "backends/mixer/sdl/sdl-mixer.h"
++#include "backends/events/sdl/rgds-volume.h"
+ #include "common/debug.h"
+ #include "common/system.h"
+ #include "common/config-manager.h"
+@@ -236,6 +237,7 @@
+ void SdlMixerManager::callbackHandler(byte *samples, int len) {
+ 	assert(_mixer);
+ 	_mixer->mixCallback(samples, len);
++	rgdsApplyVolume(samples, len);
+ }
+ 
+ #if SDL_VERSION_ATLEAST(3, 0, 0)
+--- a/gui/launcher.cpp
++++ b/gui/launcher.cpp
+@@ -50,6 +50,7 @@
+ #include "gui/widgets/groupedlist.h"
+ #include "gui/widgets/scrollcontainer.h"
+ #include "gui/widget.h"
++#include "base/rgds-calibration.h"
+ #include "gui/widgets/tab.h"
+ #include "gui/widgets/popup.h"
+ #include "gui/widgets/grid.h"
+@@ -70,6 +71,7 @@
+ 	kStartCmd = 'STRT',
+ 	kAboutCmd = 'ABOU',
+ 	kOptionsCmd = 'OPTN',
++	kRgdsRecalibrateCmd = 'RGCL',
+ 	kAddGameCmd = 'ADDG',
+ 	kMassAddGameCmd = 'MADD',
+ 	kDownloadGameCmd = 'DWNG',
+@@ -270,6 +272,9 @@
+ 	}
+ 
+ 	// I18N: Button About ScummVM program. b is the shortcut, Ctrl+b, put it in parens for non-latin (~b~)
++	if (rgdsTouchCalibrationAvailable())
++		new ButtonWidget(this, _title + ".AboutButton", Common::U32String("Calibrar"), Common::U32String("Recalibrar o toque com nove alvos"), kRgdsRecalibrateCmd);
++	else
+ 	new ButtonWidget(this, _title + ".AboutButton", _("A~b~out"), _("About ScummVM"), kAboutCmd);
+ 
+ 	_mainHelpButton = nullptr;
+@@ -834,6 +839,15 @@
+ 		recordGame(item);
+ 		break;
+ #endif
++	case kRgdsRecalibrateCmd:
++		if (requestRgdsRecalibration()) {
++			ConfMan.setActiveDomain("");
++			setResult(-1);
++			close();
++		} else {
++			MessageDialog(Common::U32String("Nao foi possivel iniciar a recalibracao.")).runModal();
++		}
++		break;
+ 	case kOptionsCmd: {
+ 		GlobalOptionsDialog options(this);
+ 		options.runModal();
+--- a/gui/themes/common/highres_layout.stx
++++ b/gui/themes/common/highres_layout.stx
+@@ -212,40 +212,40 @@
+ 				<layout type = 'vertical' padding = '10, 0, 0, 0' align = 'stretch'>
+ 					<widget name = 'StartButton'
+ 							type = 'Button'
+-					/>
++					height = '36' />
+ 					<widget name = 'LoadGameButton'
+ 							type = 'Button'
+-					/>
++					height = '36' />
+ 					<space size = '5'/>
+ 					<space size = '5' resolution = 'y>420' />
+ 					<widget name = 'AddGameButton'
+ 							type = 'Button'
+-					/>
++					height = '36' />
+ 					<widget name = 'DownloadGamesButton'
+ 							type = 'Button'
+ 					/>
+ 					<widget name = 'EditGameButton'
+ 							type = 'Button'
+-					/>
++					height = '36' />
+ 					<widget name = 'RemoveGameButton'
+ 							type = 'Button'
+-					/>
++					height = '36' />
+ 					<space size = '5'/>
+ 					<space size = '5' resolution = 'y>420' />
+ 					<widget name = 'OptionsButton'
+ 							type = 'Button'
+-					/>
++					height = '36' />
+ 					<widget name = 'MainHelpButton'
+ 							type = 'Button'
+ 					/>
+ 					<widget name = 'AboutButton'
+ 							type = 'Button'
+-					/>
++					height = '36' />
+ 					<space size = '5'/>
+ 					<space size = '5' resolution = 'y>420' />
+ 					<widget name = 'QuitButton'
+ 							type = 'Button'
+-					/>
++					height = '36' />
+ 				</layout>
+ 			</layout>
+ 			<layout type = 'horizontal' padding = '0, 0, 6, 0' spacing = '2'>
+@@ -315,33 +315,33 @@
+ 			</layout>
+ 			<layout type = 'horizontal' padding = '0, 0, 2, 0' spacing = '2'>
+ 				<widget name = 'LoadGameButton'
+-						height = 'Globals.Button.Height'
++						height = '36'
+ 				/>
+ 				<widget name = 'AddGameButton'
+-						height = 'Globals.Button.Height'
++						height = '36'
+ 				/>
+ 				<widget name = 'DownloadGamesButton'
+ 						height = 'Globals.Button.Height'
+ 				/>
+ 				<widget name = 'EditGameButton'
+-						height = 'Globals.Button.Height'
++						height = '36'
+ 				/>
+ 				<widget name = 'RemoveGameButton'
+-						height = 'Globals.Button.Height'
++						height = '36'
+ 				/>
+ 			</layout>
+ 			<layout type = 'horizontal' padding = '0, 0, 0, 0' spacing = '2'>
+ 				<widget name = 'QuitButton'
+-						height = 'Globals.Button.Height'
++						height = '36'
+ 				/>
+ 				<widget name = 'AboutButton'
+-						height = 'Globals.Button.Height'
++						height = '36'
+ 				/>
+ 				<widget name = 'OptionsButton'
+-						height = 'Globals.Button.Height'
++						height = '36'
+ 				/>
+ 				<widget name = 'StartButton'
+-						height = 'Globals.Button.Height'
++						height = '36'
+ 				/>
+ 			</layout>
+ 			<layout type = 'horizontal' padding = '0, 0, 6, 0' spacing = '2'>
+@@ -415,28 +415,28 @@
+ 			</layout>
+ 			<layout type = 'horizontal' padding = '0, 0, 4, 0' spacing = '2'>
+ 				<widget name = 'AddGameButton'
+-						height = 'Globals.Button.Height'
++						height = '36'
+ 				/>
+ 				<widget name = 'DownloadGamesButton'
+ 						height = 'Globals.Button.Height'
+ 				/>
+ 				<widget name = 'RemoveGameButton'
+-						height = 'Globals.Button.Height'
++						height = '36'
+ 				/>
+ 				<widget name = 'LoadGameButton'
+-						height = 'Globals.Button.Height'
++						height = '36'
+ 				/>
+ 				<widget name = 'OptionsButton'
+-						height = 'Globals.Button.Height'
++						height = '36'
+ 				/>
+ 				<widget name = 'MainHelpButton'
+ 						height = 'Globals.Button.Height'
+ 				/>
+ 				<widget name = 'AboutButton'
+-						height = 'Globals.Button.Height'
++						height = '36'
+ 				/>
+ 				<widget name = 'QuitButton'
+-						height = 'Globals.Button.Height'
++						height = '36'
+ 				/>
+ 			</layout>
+ 			<layout type = 'horizontal' padding = '0, 0, 6, 0' spacing = '2'>
+--- /dev/null
++++ b/base/rgds-calibration.cpp
+@@ -0,0 +1,120 @@
++#define FORBIDDEN_SYMBOL_ALLOW_ALL
++#include "base/rgds-calibration.h"
++#include "common/system.h"
++#include "common/events.h"
++#include "graphics/surface.h"
++#include "graphics/font.h"
++#include "graphics/fontman.h"
++#include "backends/events/sdl/rgds-touch-state.h"
++#include "backends/events/sdl/rgds-calibration.h"
++#include <sys/ioctl.h>
++#include <fcntl.h>
++#include <unistd.h>
++#include <cstdio>
++#include <cstring>
++#include <cstdlib>
++#include <string>
++
++static void caption(Graphics::Surface &surface,const char *text,int y,int scale,uint32 color) {
++    const Graphics::Font *font=FontMan.getFontByUsage(Graphics::FontManager::kBigGUIFont);
++    if (!font) return;
++    Graphics::Surface line;line.create(font->getStringWidth(text)+2,font->getFontHeight(),surface.format);
++    line.fillRect(Common::Rect(0,0,line.w,line.h),0);
++    font->drawString(&line,Common::String(text),0,0,line.w,color);
++    int start=(surface.w-line.w*scale)/2;
++    for(int ly=0;ly<line.h;++ly)for(int lx=0;lx<line.w;++lx)
++        if(line.getPixel(lx,ly)==color) {
++            int x=start+lx*scale,py=y+ly*scale;
++            if(x>=0&&py>=0&&x+scale<=surface.w&&py+scale<=surface.h)
++                surface.fillRect(Common::Rect(x,py,x+scale,py+scale),color);
++        }
++    line.free();
++}
++static void present(OSystem &system,Graphics::Surface &surface,int index,const char *status=nullptr) {
++    uint32 bg=surface.format.RGBToColor(15,23,42),fg=surface.format.RGBToColor(235,244,255),blue=surface.format.RGBToColor(56,189,248);
++    surface.fillRect(Common::Rect(0,0,surface.w,surface.h),bg);
++    caption(surface,"CALIBRAR TOUCH",5,1,fg);
++    if(status)caption(surface,status,surface.h/2-20,2,fg);
++    else {
++        char label[32];snprintf(label,sizeof(label),"ALVO %d DE 9",index+1);
++        caption(surface,label,surface.h-45,1,fg);
++        caption(surface,"TOQUE NO CENTRO E LEVANTE A CANETA",surface.h-22,1,fg);
++        int x=int((.08+(index%3)*.42)*(surface.w-1)),y=int((.10+(index/3)*.39)*(surface.h-1));
++        for(int dy=-32;dy<=32;++dy)for(int dx=-32;dx<=32;++dx){int q=dx*dx+dy*dy;
++            if(q>=28*28&&q<=31*31)surface.setPixel(x+dx,y+dy,blue);
++        }
++        surface.fillRect(Common::Rect(x-18,y-1,x+19,y+2),fg);
++        surface.fillRect(Common::Rect(x-1,y-18,x+2,y+19),fg);
++    }
++    system.copyRectToOverlay(surface.getPixels(),surface.pitch,0,0,surface.w,surface.h);
++    system.updateScreen();
++}
++int runRgdsCalibrationIfRequested(OSystem &system) {
++    const char *save=getenv("SCUMMVM_RGDS_CALIBRATE");
++    if(!save||!*save)return -1;
++    system.beginGFXTransaction();system.initSize(1024,768);
++    system.setFeatureState(OSystem::kFeatureAspectRatioCorrection,false);system.endGFXTransaction();
++    system.showOverlay();
++    Graphics::Surface surface;surface.create(system.getOverlayWidth(),system.getOverlayHeight(),system.getOverlayFormat());
++    fprintf(stderr,"Integrated calibration overlay=%dx%d\n",surface.w,surface.h);
++    present(system,surface,0);
++    int fd=open("/dev/input/by-path/platform-fe5e0000.i2c-event",O_RDONLY|O_NONBLOCK|O_CLOEXEC);
++    if(fd<0)fd=open("/dev/input/event1",O_RDONLY|O_NONBLOCK|O_CLOEXEC);
++    char name[128]={};input_absinfo ax={},ay={},tracking={};
++    if(fd<0||ioctl(fd,EVIOCGNAME(sizeof(name)),name)<0||!strstr(name,"gt9xx")||
++        ioctl(fd,EVIOCGABS(ABS_MT_POSITION_X),&ax)<0||ioctl(fd,EVIOCGABS(ABS_MT_POSITION_Y),&ay)<0||
++        ax.maximum<=ax.minimum||ay.maximum<=ay.minimum){fprintf(stderr,"Calibration touch unavailable\n");if(fd>=0)close(fd);surface.free();return 1;}
++    RgdsTouchState state(ioctl(fd,EVIOCGABS(ABS_MT_TRACKING_ID),&tracking)==0);
++    int index=0,samples=0;double sumx=0,sumy=0;
++    uint32 pressed=0,ready=system.getMillis()+500;bool cancel=false;
++    RgdsCalibrationPoint points[9];
++    while(index<9&&!cancel) {
++        Common::Event ev;
++        while(system.getEventManager()->pollEvent(ev))
++            if(ev.type==Common::EVENT_QUIT||(ev.type==Common::EVENT_KEYDOWN&&ev.kbd.keycode==Common::KEYCODE_ESCAPE))cancel=true;
++        input_event ie;RgdsTouchFrame frame;
++        for(int n=0;n<256&&read(fd,&ie,sizeof(ie))==sizeof(ie);++n){
++            if(!state.consume(ie,frame))continue;
++            if(frame.down&&frame.changed){pressed=system.getMillis();samples=0;sumx=sumy=0;}
++            if(frame.down&&system.getMillis()>=ready){sumx+=frame.x;sumy+=frame.y;++samples;}
++            if(!frame.down&&frame.changed&&samples>0&&system.getMillis()-pressed>=40&&system.getMillis()>=ready){
++                double tx=.08+(index%3)*.42,ty=.10+(index/3)*.39;
++                points[index]={(sumx/samples-ax.minimum)/(ax.maximum-ax.minimum),(sumy/samples-ay.minimum)/(ay.maximum-ay.minimum),tx,ty};
++                fprintf(stderr,"Target %d screen=%.1f,%.1f raw=%.2f,%.2f\n",index+1,tx*(surface.w-1),ty*(surface.h-1),sumx/samples,sumy/samples);
++                ++index;samples=0;ready=system.getMillis()+200;break;
++            }
++        }
++        if(index<9)present(system,surface,index);
++        system.delayMillis(10);
++    }
++    RgdsCalibration fit;double worst=0,ss=0;
++    bool ok=!cancel&&index==9&&rgdsFitCalibration(points,9,fit);
++    if(ok){for(const auto &p:points){double x,y;fit.map(p.u,p.v,x,y);double dx=(x-p.x)*(surface.w-1),dy=(y-p.y)*(surface.h-1);double e=std::sqrt(dx*dx+dy*dy);if(e>worst)worst=e;ss+=e*e;}
++        fprintf(stderr,"Fit residual max=%.2f RMS=%.2f pixels\n",worst,std::sqrt(ss/9));ok=worst<=12&&std::sqrt(ss/9)<=6;
++    }
++    if(ok){std::string tmp=std::string(save)+".new";FILE *file=fopen(tmp.c_str(),"w");
++        if(!file)ok=false;
++        else{int n=fprintf(file,"RGDS_TOUCH_CALIBRATION_V1\n%.17g %.17g %.17g %.17g %.17g %.17g\n",fit.a,fit.b,fit.c,fit.d,fit.e,fit.f);bool closed=fclose(file)==0;
++            ok=n>0&&closed&&rename(tmp.c_str(),save)==0;if(!ok)unlink(tmp.c_str());}
++    }
++    present(system,surface,0,ok?"CALIBRACAO GUARDADA":"CALIBRACAO NAO GUARDADA");
++    system.delayMillis(2200);
++    fprintf(stderr,"Integrated calibration %s\n",ok?"saved":"rejected or cancelled");
++    close(fd);surface.free();system.hideOverlay();return ok?0:1;
++}
++
++// Schedule a new session without deleting the last known good calibration.
++bool rgdsTouchCalibrationAvailable() {
++    const char *path=getenv("SCUMMVM_RGDS_TOUCH_CALIBRATION");
++    return path && *path;
++}
++bool requestRgdsRecalibration() {
++    const char *path=getenv("SCUMMVM_RGDS_TOUCH_CALIBRATION");
++    if(!path || !*path)return false;
++    std::string marker=std::string(path)+".recalibrate";
++    fprintf(stderr,"RGDS recalibration requested: %s\n",marker.c_str());
++    FILE *file=fopen(marker.c_str(),"w");
++    if(!file)return false;
++    bool ok=fputs("recalibrate\n",file)>=0;
++    return fclose(file)==0 && ok;
++}
+--- /dev/null
++++ b/base/rgds-calibration.h
+@@ -0,0 +1,7 @@
++#ifndef BASE_RGDS_CALIBRATION_H
++#define BASE_RGDS_CALIBRATION_H
++class OSystem;
++bool rgdsTouchCalibrationAvailable();
++bool requestRgdsRecalibration();
++int runRgdsCalibrationIfRequested(OSystem &system);
++#endif
+--- /dev/null
++++ b/backends/events/sdl/rgds-touch.cpp
+@@ -0,0 +1,122 @@
++#define FORBIDDEN_SYMBOL_ALLOW_ALL
++#include "backends/events/sdl/rgds-touch.h"
++#include "backends/events/sdl/rgds-volume.h"
++#include <fcntl.h>
++#include <unistd.h>
++#include <sys/ioctl.h>
++#include <errno.h>
++#include <cstdio>
++#include <cstdlib>
++#include <cstring>
++
++RgdsTouchReader::RgdsTouchReader() : _fd(-1), _minX(0), _maxX(1023),
++	_minY(0), _maxY(767), _logs(0), _rawLogs(0), _pumpLogged(false), _swap(false), _invertX(false), _invertY(false), _calibrated(false), _lastTouchTick(0) {
++	rgdsVolumeInit();
++	const char *device = getenv("SCUMMVM_RGDS_TOUCH_DEVICE");
++	if (!device || !*device) return;
++	_fd = open(device, O_RDONLY | O_NONBLOCK | O_CLOEXEC);
++	if (_fd < 0) {
++		fprintf(stderr, "RGDS evdev open failed: %s: %s\n", device, strerror(errno));
++		return;
++	}
++	char name[256] = {};
++	ioctl(_fd, EVIOCGNAME(sizeof(name)), name);
++	// Only accept the touchscreen confirmed by the device's diagnostic.
++	if (!strstr(name, "gt9xx")) {
++		fprintf(stderr, "RGDS evdev rejected unexpected device: %s\n", name);
++		close(_fd); _fd = -1; return;
++	}
++	input_absinfo ax = {}, ay = {}, tracking = {};
++	bool mt = ioctl(_fd, EVIOCGABS(ABS_MT_POSITION_X), &ax) == 0 &&
++		ioctl(_fd, EVIOCGABS(ABS_MT_POSITION_Y), &ay) == 0;
++	if (!mt && (ioctl(_fd, EVIOCGABS(ABS_X), &ax) < 0 ||
++		ioctl(_fd, EVIOCGABS(ABS_Y), &ay) < 0)) {
++		fprintf(stderr, "RGDS evdev missing coordinate axes\n");
++		close(_fd); _fd = -1; return;
++	}
++	_minX = ax.minimum; _maxX = ax.maximum;
++	_minY = ay.minimum; _maxY = ay.maximum;
++	const char *calibrationPath = getenv("SCUMMVM_RGDS_TOUCH_CALIBRATION");
++	if (calibrationPath) {
++		FILE *file = fopen(calibrationPath, "r");
++		if (file) {
++			char magic[64] = {};
++			if (fscanf(file, "%63s %lf %lf %lf %lf %lf %lf", magic,
++				&_calibration.a,&_calibration.b,&_calibration.c,&_calibration.d,&_calibration.e,&_calibration.f) == 7 &&
++				strcmp(magic,"RGDS_TOUCH_CALIBRATION_V1")==0 && _calibration.valid()) _calibrated=true;
++			fclose(file);
++			fprintf(stderr,"RGDS calibration: %s (%s)\n",_calibrated ? "loaded" : "invalid, using default",calibrationPath);
++		}
++	}
++	_state = RgdsTouchState(mt && ioctl(_fd, EVIOCGABS(ABS_MT_TRACKING_ID), &tracking) == 0);
++	_swap = getenv("SCUMMVM_RGDS_TOUCH_SWAP_XY") && atoi(getenv("SCUMMVM_RGDS_TOUCH_SWAP_XY"));
++	_invertX = getenv("SCUMMVM_RGDS_TOUCH_INVERT_X") && atoi(getenv("SCUMMVM_RGDS_TOUCH_INVERT_X"));
++	_invertY = getenv("SCUMMVM_RGDS_TOUCH_INVERT_Y") && atoi(getenv("SCUMMVM_RGDS_TOUCH_INVERT_Y"));
++	fprintf(stderr, "RGDS evdev opened %s (%s) axes X=%d..%d Y=%d..%d; swap=%d invert=%d,%d\n",
++		device, name, _minX, _maxX, _minY, _maxY, _swap, _invertX, _invertY);
++}
++
++RgdsTouchReader::~RgdsTouchReader() { if (_fd >= 0) close(_fd); }
++
++void RgdsTouchReader::pump(SDL_Window *window) {
++	rgdsVolumePoll();
++	if (!_pumpLogged) {
++		fprintf(stderr, "RGDS evdev pump entered: fd=%d window=%s\n", _fd, window ? "available" : "missing");
++		_pumpLogged = true;
++	}
++	if (_fd < 0 || !window) return;
++	int width = 0, height = 0;
++	SDL_GetWindowSize(window, &width, &height);
++	if (width <= 0 || height <= 0) return;
++	input_event input;
++	// Bound work per poll to keep the UI responsive while moving the stylus.
++	for (int n = 0; n < 256; ++n) {
++		ssize_t result = read(_fd, &input, sizeof(input));
++		if (result < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) break;
++		if (result != sizeof(input)) {
++			if (result < 0 && errno == EINTR) continue;
++			fprintf(stderr, "RGDS evdev read stopped: %s\n", result < 0 ? strerror(errno) : "short read");
++			close(_fd); _fd = -1; break;
++		}
++		RgdsTouchFrame frame;
++		if (_rawLogs++ < 160)
++			fprintf(stderr, "RGDS input type=%u code=%u value=%d\n", input.type, input.code, input.value);
++		if (!_state.consume(input, frame)) continue;
++		_lastTouchTick = SDL_GetTicks();
++		int x = _swap ? RgdsTouchState::scale(frame.y, _minY, _maxY, width)
++			: RgdsTouchState::scale(frame.x, _minX, _maxX, width);
++		int y = _swap ? RgdsTouchState::scale(frame.x, _minX, _maxX, height)
++			: RgdsTouchState::scale(frame.y, _minY, _maxY, height);
++		if (_invertX) x = width - 1 - x;
++		if (_invertY) y = height - 1 - y;
++		if (_calibrated && _maxX>_minX && _maxY>_minY) {
++			double cx,cy;
++			_calibration.map(double(frame.x-_minX)/(_maxX-_minX),double(frame.y-_minY)/(_maxY-_minY),cx,cy);
++			x=int(std::lround(cx*(width-1)));y=int(std::lround(cy*(height-1)));
++			x=x<0?0:x>=width?width-1:x;y=y<0?0:y>=height?height-1:y;
++		}
++		if (_logs++ < 40)
++			fprintf(stderr, "RGDS touch raw=%d,%d mapped=%d,%d window=%dx%d down=%d edge=%d\n",
++				frame.x, frame.y, x, y, width, height, frame.down, frame.changed);
++		SDL_Event ev = {};
++		if (frame.moved || frame.changed) {
++			ev.type = SDL_MOUSEMOTION;
++			ev.motion.windowID = SDL_GetWindowID(window);
++			ev.motion.which = RGDS_DIRECT_MOUSE_ID;
++			ev.motion.x = x; ev.motion.y = y;
++			ev.motion.state = frame.down ? SDL_BUTTON_LMASK : 0;
++			SDL_PushEvent(&ev);
++		}
++		if (frame.changed) {
++			ev = {};
++			ev.type = frame.down ? SDL_MOUSEBUTTONDOWN : SDL_MOUSEBUTTONUP;
++			ev.button.windowID = SDL_GetWindowID(window);
++			ev.button.which = RGDS_DIRECT_MOUSE_ID;
++			ev.button.button = SDL_BUTTON_LEFT;
++			ev.button.state = frame.down ? SDL_PRESSED : SDL_RELEASED;
++			ev.button.clicks = 1;
++			ev.button.x = x; ev.button.y = y;
++			SDL_PushEvent(&ev);
++		}
++	}
++}
+--- /dev/null
++++ b/backends/events/sdl/rgds-touch.h
+@@ -0,0 +1,24 @@
++#ifndef RGDS_TOUCH_H
++#define RGDS_TOUCH_H
++#include "backends/platform/sdl/sdl-sys.h"
++#include "backends/events/sdl/rgds-touch-state.h"
++#include "backends/events/sdl/rgds-calibration.h"
++static const Uint32 RGDS_DIRECT_MOUSE_ID = 0x52474453;
++
++class RgdsTouchReader {
++public:
++	RgdsTouchReader();
++	~RgdsTouchReader();
++	bool active() const { return _fd >= 0; }
++	bool recent() const { return _lastTouchTick && SDL_GetTicks() - _lastTouchTick < 200; }
++	void pump(SDL_Window *window);
++private:
++	int _fd, _minX, _maxX, _minY, _maxY, _logs, _rawLogs;
++	bool _pumpLogged;
++	bool _swap, _invertX, _invertY;
++	bool _calibrated;
++	RgdsCalibration _calibration;
++	Uint32 _lastTouchTick;
++	RgdsTouchState _state;
++};
++#endif
+--- /dev/null
++++ b/backends/events/sdl/rgds-touch-state.h
+@@ -0,0 +1,65 @@
++// RG DS Plus evdev input reducer. No device grab or calibration writes.
++#ifndef RGDS_TOUCH_STATE_H
++#define RGDS_TOUCH_STATE_H
++#include <linux/input.h>
++#include <stdint.h>
++
++struct RgdsTouchFrame {
++	int x, y;
++	bool down, changed, moved;
++};
++
++class RgdsTouchState {
++public:
++	RgdsTouchState(bool tracking = true) : _tracking(tracking), _slot(0), _x(0), _y(0),
++		_down(false), _previousDown(false), _dirty(false), _dropped(false), _seenTracking(false) {}
++	bool consume(const input_event &ev, RgdsTouchFrame &frame) {
++		if (ev.type == EV_SYN && ev.code == SYN_DROPPED) {
++			_dropped = true;
++			return false;
++		}
++		if (_dropped) {
++			if (ev.type == EV_SYN && ev.code == SYN_REPORT) {
++				_dropped = false;
++				_down = false;
++				_dirty = false;
++				frame = {_x, _y, false, _previousDown, false};
++				_previousDown = false;
++				return frame.changed;
++			}
++			return false;
++		}
++		if (ev.type == EV_ABS) {
++			if (ev.code == ABS_MT_SLOT) _slot = ev.value;
++			else if (_slot == 0) {
++				if (_tracking && ev.code == ABS_MT_TRACKING_ID) {
++					_seenTracking = true; _down = ev.value >= 0;
++				}
++				else if (ev.code == ABS_MT_POSITION_X || ev.code == ABS_X) {
++					_x = ev.value; _dirty = true;
++				} else if (ev.code == ABS_MT_POSITION_Y || ev.code == ABS_Y) {
++					_y = ev.value; _dirty = true;
++				}
++			}
++		} else if ((!_tracking || !_seenTracking) && ev.type == EV_KEY && ev.code == BTN_TOUCH) {
++			_down = ev.value != 0;
++		} else if (ev.type == EV_SYN && ev.code == SYN_REPORT) {
++			frame = {_x, _y, _down, _down != _previousDown, _dirty && _down};
++			_previousDown = _down;
++			_dirty = false;
++			return frame.changed || frame.moved;
++		}
++		return false;
++	}
++	static int scale(int value, int minimum, int maximum, int size) {
++		if (maximum <= minimum || size <= 1) return 0;
++		if (value < minimum) value = minimum;
++		if (value > maximum) value = maximum;
++		return int((int64_t(value) - minimum) * (size - 1) / (int64_t(maximum) - minimum));
++	}
++private:
++	bool _tracking;
++	int _slot, _x, _y;
++	bool _down, _previousDown, _dirty, _dropped, _seenTracking;
++};
++#endif
+--- /dev/null
++++ b/backends/events/sdl/rgds-calibration.h
+@@ -0,0 +1,36 @@
++#ifndef RGDS_CALIBRATION_H
++#define RGDS_CALIBRATION_H
++#include <cmath>
++struct RgdsCalibration {
++    double a=1,b=0,c=0,d=0,e=1,f=0;
++    void map(double u,double v,double &x,double &y) const {
++        x=a*u+b*v+c; y=d*u+e*v+f;
++    }
++    bool valid() const {
++        return std::isfinite(a)&&std::isfinite(b)&&std::isfinite(c)&&std::isfinite(d)&&std::isfinite(e)&&std::isfinite(f)
++            && std::fabs(a)<4&&std::fabs(b)<4&&std::fabs(c)<4&&std::fabs(d)<4&&std::fabs(e)<4&&std::fabs(f)<4
++            && std::fabs(a*e-b*d)>0.05;
++    }
++};
++struct RgdsCalibrationPoint { double u,v,x,y; };
++inline bool rgdsFitCalibration(const RgdsCalibrationPoint *p,int count,RgdsCalibration &out) {
++    if (count<3) return false;
++    double m[3][5]={};
++    for(int k=0;k<count;++k) {
++        double q[3]={p[k].u,p[k].v,1};
++        for(int i=0;i<3;++i) {
++            for(int j=0;j<3;++j)m[i][j]+=q[i]*q[j];
++            m[i][3]+=q[i]*p[k].x;m[i][4]+=q[i]*p[k].y;
++        }
++    }
++    for(int i=0;i<3;++i) {
++        int pivot=i;for(int r=i+1;r<3;++r)if(std::fabs(m[r][i])>std::fabs(m[pivot][i]))pivot=r;
++        if(std::fabs(m[pivot][i])<1e-10)return false;
++        for(int j=0;j<5;++j){double t=m[i][j];m[i][j]=m[pivot][j];m[pivot][j]=t;}
++        double div=m[i][i];for(int j=i;j<5;++j)m[i][j]/=div;
++        for(int r=0;r<3;++r)if(r!=i){double factor=m[r][i];for(int j=i;j<5;++j)m[r][j]-=factor*m[i][j];}
++    }
++    out.a=m[0][3];out.b=m[1][3];out.c=m[2][3];out.d=m[0][4];out.e=m[1][4];out.f=m[2][4];
++    return out.valid();
++}
++#endif
+--- /dev/null
++++ b/backends/events/sdl/rgds-volume.cpp
+@@ -0,0 +1,93 @@
++#define FORBIDDEN_SYMBOL_ALLOW_ALL
++#include "backends/events/sdl/rgds-volume.h"
++#include <atomic>
++#include <cstdio>
++#include <cstdlib>
++#include <cstring>
++#include <fcntl.h>
++#include <unistd.h>
++#include <linux/input.h>
++#include <sys/ioctl.h>
++#include <time.h>
++#include <cstdint>
++
++static std::atomic<int> gain(100);
++static bool initialized = false, enabled = false;
++static int keyFds[32], keyCount = 0, level = 2;
++static unsigned long lastRead = 0, lastRepeat = 0;
++static const char *volumePath = "/sys/class/anbernic_misc/openbor_volume";
++static unsigned long milliseconds() {
++    timespec ts = {}; clock_gettime(CLOCK_MONOTONIC, &ts);
++    return ts.tv_sec * 1000UL + ts.tv_nsec / 1000000UL;
++}
++static bool readLevel(int &out) {
++    FILE *f = fopen(volumePath, "r");
++    if (!f) return false;
++    int value = -1; bool ok = fscanf(f, "%d", &value) == 1;
++    fclose(f);
++    if (!ok || value < 0 || value > 10) return false;
++    out = value; return true;
++}
++static bool hasKey(const unsigned long *bits, int key) {
++    return bits[key / (8 * sizeof(unsigned long))] & (1UL << (key % (8 * sizeof(unsigned long))));
++}
++void rgdsVolumeInit() {
++    if (initialized) return;
++    initialized = true;
++    // Restrict device-specific behavior to this launcher's explicit environment.
++    const char *flag = getenv("SCUMMVM_RGDS_STOCK_VOLUME");
++    enabled = flag && strcmp(flag, "1") == 0;
++    if (!enabled) return;
++    bool valid = readLevel(level);
++    gain.store(level * 10);
++    fprintf(stderr, "RGDS volume: Stock level=%d/10, source=%s\n", level, valid ? volumePath : "unavailable; fallback 20 percent");
++    for (int i = 0; i < 32; ++i) {
++        char path[64]; snprintf(path, sizeof(path), "/dev/input/event%d", i);
++        int fd = open(path, O_RDONLY | O_NONBLOCK | O_CLOEXEC);
++        if (fd < 0) continue;
++        unsigned long bits[(KEY_MAX + 8 * sizeof(unsigned long)) / (8 * sizeof(unsigned long))] = {};
++        if (ioctl(fd, EVIOCGBIT(EV_KEY, sizeof(bits)), bits) < 0 ||
++            (!hasKey(bits, KEY_VOLUMEUP) && !hasKey(bits, KEY_VOLUMEDOWN))) { close(fd); continue; }
++        keyFds[keyCount++] = fd;
++        fprintf(stderr, "RGDS volume keys: %s\n", path);
++    }
++}
++void rgdsVolumePoll() {
++    if (!enabled) return;
++    unsigned long now = milliseconds();
++    if (now - lastRead >= 200) {
++        int current;
++        if (readLevel(current) && current != level) {
++            level = current; gain.store(level * 10);
++            fprintf(stderr, "RGDS volume: external level=%d/10\n", level);
++        }
++        lastRead = now;
++    }
++    for (int i = 0; i < keyCount; ++i) {
++        input_event event;
++        for (int n = 0; n < 64 && read(keyFds[i], &event, sizeof(event)) == sizeof(event); ++n) {
++            if (event.type != EV_KEY || (event.code != KEY_VOLUMEUP && event.code != KEY_VOLUMEDOWN) ||
++                (event.value != 1 && event.value != 2)) continue;
++            if (event.value == 2 && now - lastRepeat < 180) continue;
++            lastRepeat = now;
++            level += event.code == KEY_VOLUMEUP ? 1 : -1;
++            if (level < 0) level = 0;
++            if (level > 10) level = 10;
++            gain.store(level * 10);
++            FILE *f = fopen(volumePath, "w");
++            bool saved = false;
++            if (f) { bool wrote = fprintf(f, "%d\n", level) > 0; saved = fclose(f) == 0 && wrote; }
++            fprintf(stderr, "RGDS volume: button level=%d/10, firmware saved=%d\n", level, saved);
++        }
++    }
++}
++void rgdsApplyVolume(unsigned char *samples, int length) {
++    int percent = gain.load();
++    if (percent >= 100) return;
++    // SDL output is signed native-endian 16-bit PCM. Never access files here.
++    for (int i = 0; i + 1 < length; i += 2) {
++        int16_t value; memcpy(&value, samples + i, sizeof(value));
++        value = int32_t(value) * percent / 100;
++        memcpy(samples + i, &value, sizeof(value));
++    }
++}
+--- /dev/null
++++ b/backends/events/sdl/rgds-volume.h
+@@ -0,0 +1,6 @@
++#ifndef RGDS_VOLUME_H
++#define RGDS_VOLUME_H
++void rgdsVolumeInit();
++void rgdsVolumePoll();
++void rgdsApplyVolume(unsigned char *samples, int length);
++#endif

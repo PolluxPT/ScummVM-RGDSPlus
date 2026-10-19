@@ -1,0 +1,24 @@
+Screen helpers — GPL-3.0-or-later (see app/COPYING or license directory).
+Built with Ubuntu noble gcc-13-aarch64-linux-gnu 13.2.0-23ubuntu4.
+Compiler packages and SHA256 metadata: screen-sdk/package-metadata.json included here.
+Native helpers dynamically resolve stock SDL2/SDL2_ttf; no bundled SDL or firmware changes.
+Build against an ARM64 glibc sysroot:
+  aarch64-linux-gnu-gcc -O2 -std=c11 menu.c -ldl -o rgds-screen-menu
+  aarch64-linux-gnu-gcc -O2 -std=c11 -fPIC -shared mirror.c -ldl -o librgds-screen.so
+  aarch64-linux-gnu-gcc -O2 -std=c11 -fPIC -shared lower.c -ldl -o librgds-lower.so
+Copy menu into app/tools and library into app/lib. Launcher preloads the original mirror helper for mirror sessions and the new lower helper for lower-only sessions.
+The launcher supplies the physically verified Stock backlight mapping. Paths are limited to two known stock nodes.
+Validation: menu render with native SDL/TTF, probe/save/cancel state, backlight mappings/restoration,
+2D and OpenGL row flip/current context restoration, input isolation, mirror failure forwarding.
+Both screen modes validated by user on RG DS Plus Stock V1.0 (20260915).
+Verified Stock mapping: upper=backlight1, lower=backlight. Final launcher seeds
+this mapping before the chooser, avoiding the ambiguous first-run identification.
+The core and rendering libraries are unchanged from the physically tested RC2.
+The startup menu has now been rebuilt with PT/EN text, an accessible third button
+and an atomic config/startup-language.txt preference. Host tests cover language
+persistence, mode selection, hitboxes, write failure, and visual rendering of PT/EN.
+The new language button still needs physical console confirmation.
+RC2 lower helper creates upper black surface, waits for first lower frame + 250ms,
+then writes upper zero followed by saved lower brightness; restores both on SDL_Quit.
+The parent EXIT trap/guardian also restores both. New startup log uses truncate-once
+and O_APPEND for parent/child so calibration output cannot be overwritten after return.

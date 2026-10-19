@@ -1,0 +1,129 @@
+Using configuration file: /workspace/scratch/50619cb4f7f3/qemu-test.ini
+Engine ID       Engine Name                                           
+--------------- ------------------------------------------------------
+scumm           SCUMM [all games]
+access          Access
+adl             ADL
+agds            AGDS Engine
+agi             AGI preAGI + v2 + v3
+agos            AGOS
+ags             Adventure Game Studio
+alcachofa       Alcachofa
+alg             American Laser Games
+asylum          Sanitarium
+avalanche       Avalanche
+awe             Awe
+bagel           BAGEL
+bbvs            MTV's Beavis and Butt-Head in Virtual Stupidity
+bladerunner     Blade Runner
+bolt            BOLT
+buried          The Journeyman Project 2: Buried in Time
+cge             CGE
+cge2            CGE2
+chamber         chamber
+chewy           Chewy: Esc from F5
+cine            Cinematique evo 1
+colony          The Colony
+composer        Magic Composer
+crab            Crab
+cruise          Cinematique evo 2
+cryo            Cryo
+cryomni3d       Cryo Omni3D
+darkseed        Darkseed
+dgds            Dynamix Game Development System
+director        Macromedia Director
+dm              Dungeon Master
+draci           Dračí Historie
+dragons         Blazing Dragons
+drascula        Drascula: The Vampire Strikes Back
+dreamweb        DreamWeb
+eem             Eagle Eye Mysteries
+efh             Efh
+fool            Fool
+freescape       Freescape
+gamos           Gamos
+glk             Glk
+gnap            Gnap
+gob             Gob
+got             Got
+griffon         Griffon Engine
+grim            Grim
+groovie         Groovie
+hadesch         Hades Challenge
+harvester       Harvester
+hdb             Hyperspace Delivery Boy!
+hopkins         Hopkins FBI
+hpl1            HPL1
+hugo            Hugo
+hypno           Hypno
+icb             In Cold Blood Engine
+illusions       Illusions
+immortal        The Immortal
+kingdom         Kingdom: The Far Reaches' Engine
+kyra            Kyra
+lab             Labyrinth of Time
+lastexpress     The Last Express
+lilliput        Lilliput
+lure            Lure of the Temptress
+m4              M4
+macs2           Macs2
+macventure      MacVenture
+made            MADE
+mads            MADS
+mediastation    Media Station
+mm              Might & Magic
+mohawk          Mohawk
+mortevielle     Mortville Manor
+mtropolis       mTropolis
+mutationofjb    Mutation of J.B.
+myst3           Myst III
+nancy           Nancy Drew
+neverhood       The Neverhood
+ngi             Nikita Game Interface
+parallaction    Parallaction
+pegasus         The Journeyman Project: Pegasus Prime
+pelrock         Alfred Pelrock
+petka           Red Comrades
+phoenixvr       Phoenix VR
+pink            Pink Panther
+playground3d    Playground 3d: the testing and playground environment for 3d renderers
+plumbers        Plumbers Don't Wear Ties
+prince          The Prince and the Coward
+private         Private Eye
+qdengine        QD Engine
+queen           Flight of the Amazon Queen
+saga            SAGA [all games]
+saga2           SAGA2
+sci             SCI [all games]
+sherlock        Sherlock
+sky             Beneath a Steel Sky
+sludge          Sludge
+stark           Stark
+startrek        Star Trek
+supernova       Mission Supernova
+sword1          Broken Sword: The Shadow of the Templars
+sword2          Broken Sword II: The Smoking Mirror
+sword25         Broken Sword 2.5
+teenagent       TeenAgent
+testbed         TestBed: The Backend Testing Framework
+tetraedge       Tetraedge Engine
+tinsel          Tinsel
+titanic         Starship Titanic
+toltecs         3 Skulls of the Toltecs
+tony            Tony Tough and the Night of Roasted Moths
+toon            Toonstruck
+tot             Trick or Treat
+touche          Touché: The Adventures of the Fifth Musketeer
+trecision       Trecision Adventure Module
+tsage           TsAGE
+tucker          Bud Tucker in Double Trouble
+twine           Little Big Adventure
+twp             Thimbleweed Park
+ultima          Ultima
+vcruise         V-Cruise
+voyeur          Voyeur
+wage            World Adventure Game Engine
+watchmaker      The Watchmaker
+waynesworld     Wayne's World
+wintermute      Wintermute
+zvision         Z-Vision

@@ -1,0 +1,6 @@
+#define main screen_app_main
+#include "../menu.c"
+#undef main
+#include <assert.h>
+static int value(const char*path,const char*expect){FILE*f=fopen(path,"r");if(!f)return 0;char s[32];int ok=fscanf(f,"%31s",s)==1&&!strcmp(s,expect);fclose(f);return ok;}
+int main(void){char dir[]="/tmp/rgds-language-XXXXXX";assert(mkdtemp(dir));snprintf(languagepath,sizeof(languagepath),"%s/language",dir);snprintf(modepath,sizeof(modepath),"%s/mode",dir);load_language();assert(!english);stage=3;assert(choice_count()==3&&hit_button(500,580)==2);assert(hit_button(500,700)==-1);selected=2;assert(activate()==-1);assert(english&&value(languagepath,"en"));assert(access(modepath,F_OK)!=0);english=0;load_language();assert(english);selected=0;assert(activate()==0&&value(modepath,"off")&&english);selected=1;assert(activate()==0&&value(modepath,"mirror"));selected=2;assert(activate()==-1&&!english&&value(languagepath,"pt"));load_language();assert(!english);assert(save_text(languagepath,"bogus"));load_language();assert(!english);snprintf(languagepath,sizeof(languagepath),"%s/no-dir/language",dir);toggle_language();assert(!english&&language_error);snprintf(languagepath,sizeof(languagepath),"%s/language",dir);unlink(languagepath);unlink(modepath);rmdir(dir);puts("PT/EN toggle + persistence + display modes + third-row hitbox + save failure PASS");}

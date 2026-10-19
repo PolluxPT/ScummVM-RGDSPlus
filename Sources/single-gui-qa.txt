@@ -1,0 +1,2 @@
+Using configuration file: /workspace/scratch/50619cb4f7f3/qemu-package.ini
+Virtual keyboard pack 'vkeybd_default' loaded successfully

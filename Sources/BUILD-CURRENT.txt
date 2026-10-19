@@ -1,0 +1,7 @@
+Use the included official scummvm-2026.4.0.tar.xz archive and apply
+rgds-2026-fix1.patch to clean upstream, not the older patch.
+Compiler configuration is in config.mk/config.h/build-configure.log and BUILD.txt.
+The port source and tests here include the Correção 1 changes; engine plugins
+are identical to the first 2026.4.0 full package. Only the core, theme layouts,
+shader distribution and launch scripts changed. The complete launch scripts
+are the current files under APPS, including the read-only menu-inspection tool.

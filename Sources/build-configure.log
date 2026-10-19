@@ -1,0 +1,80 @@
+Running ScummVM configure...
+Looking for C++ compiler... aarch64-linux-gnu-g++
+Checking if compiler supports C++11... yes
+Checking for compiler version... GCC 13, ok
+Checking if C++11 initializer_list is available... yes
+Checking if C++11 std::nullptr_t is available... yes
+Checking if C++11 alignas and alignof keywords are available... yes
+Using LLD linker... no
+Using Mold linker... no
+Using Gold linker... no
+Checking for whether C++ compiler accepts -Wglobal-constructors... no
+Checking for whether C++ compiler accepts -Wframe-larger-than=307200... yes
+Checking for whether C++ compiler accepts -Wno-undefined-var-template... no
+Checking for whether C++ compiler accepts -Wno-pragma-pack... no
+Checking for whether C++ compiler accepts -Wno-address-of-packed-member... yes
+Checking endianness... little
+Alignment required... yes
+Checking host CPU architecture... aarch64
+Checking hosttype... linux-gnu
+Cross-compiling to aarch64-linux-gnu
+WARNING: Unknown target, continuing with auto-detected values
+Checking for unused components...
+   Feature CDTOONS is disabled as unused by enabled engines
+   Feature Microsoft MPEG-4 v3 is disabled as unused by enabled engines
+...check complete
+Checking for pkg-config... yes
+Looking for sdl-config... /workspace/scratch/50619cb4f7f3/cross-bin/sdl2-config
+Checking for SDL... yes
+Checking if host is POSIX compliant... yes
+Checking if posix_spawn is required and supported... yes
+Checking if fseeko with 64-bit off_t is supported... yes
+Checking whether to have a verbose build... no
+Checking whether building plugins was requested... yes
+Checking whether building plugins is supported... yes
+Checking if detection features building statically... no
+Checking if building detection features for all engines... yes
+Checking for Ogg... yes
+Checking for TTS libraries... no
+Checking for Vorbis... yes
+Checking for Tremor... no (Vorbis/Tremor support is mutually exclusive)
+Checking for OPL2LPT... no
+Checking for RetroWave OPL3... no
+Checking for nFM OPL2 / OPL3... no
+Checking for FLAC >= 1.1.3... yes
+Checking for MAD... yes
+Checking for ALSA >= 0.9... no
+Checking for libjpeg >= v6b... yes
+Checking for PNG >= 1.2.8... yes
+Checking for GIF >= 5.0.0... yes
+Checking for libtheoradec >= 1.0... yes
+Checking for libvpx >= 1.6... yes
+Checking for libfaad... no
+Checking for SEQ MIDI... yes
+Checking for sndio... no
+Checking for TiMidity... yes
+Checking for zlib... yes
+Checking for libmpeg2 >= 0.4.0... yes
+Checking for liba52... yes
+Checking for libcurl... no
+Checking for Network client... no
+Checking for libopenmpt... no
+Looking for mikmod-config... none found!
+Checking for libmikmod... no
+Checking for libmpcdec... no
+Checking for FluidSynth... no
+Checking for FluidLite... no
+Checking for Sonivox >= 3.6.12... no
+Checking for readline... skipping (text console disabled)
+Checking for libunity... no
+Checking for gtk... no
+Checking for FreeType2... yes
+Checking for OpenGL... yes (OpenGL ES 2)
+Checking for OpenGL for game... yes (OpenGL ES2)
+Checking for Linux CD-ROM... yes
+Checking for curl... yes
+Checking for FriBidi... yes
+Test C++11 compatibility during compilation... no
+Checking for Discord RPC... no
+Checking for ImGui... no
+Building translation support... yes (

@@ -1,0 +1,36 @@
+ScummVM RG DS Plus — volume curve — GPL-3.0-or-later
+Curve copied mathematically from the final Mario Kart Wii RGDS+ runtime:
+  gain(level) = 0.35 * (level / 10)^2, level 0..10.
+The existing Stock volume reader, physical key handling and persistence are unchanged.
+The output is signed native-endian 16-bit SDL PCM. No I/O is performed in the audio callback.
+The existing enabled flag is respected. Integer division truncates toward zero.
+
+Corresponding core source:
+Apply the existing Sources/rgds-2026-fix1.patch to the included official upstream
+ScummVM source, then apply volume-curve.patch. The updated rgds-volume.cpp is
+also supplied in Sources/port/backends/events/sdl/.
+
+To reproduce the shipped executable without rebuilding the entire application:
+Use the Ubuntu noble AArch64 GCC 13.2 cross compiler described by
+Sources/screens/package-metadata.json (already included in the full package).
+Compile curve.c:
+ aarch64-linux-gnu-gcc -Os -fno-stack-protector -fno-asynchronous-unwind-tables -fno-pie -fno-pic -c curve.c -o curve.o
+ aarch64-linux-gnu-ld --section-start=.text=0x3d8134 --defsym=rgds_gain=0xf80078 --defsym=rgds_enabled=0xf860c1 -e rgds_curve curve.o -o curve.elf
+ aarch64-linux-gnu-objcopy -O binary --only-section=.text curve.elf curve.bin
+ python3 patch_scummvm.py original-scummvm updated-scummvm
+
+patch_scummvm.py accepts only original SHA256
+b664f9e133b3f63f5a215bc7763c4ee2f572d70d06dd46db057b78455b75c862.
+The two data addresses were verified in the original rgdsVolumeInit/ApplyVolume
+instructions. The linked replacement uses only PC-relative loads and scratch
+caller-saved registers. It occupies 88 bytes in the original 96-byte function;
+the remaining 8 bytes are NOPs. ELF layout, symbols, plugin ABI and every other
+executable byte remain unchanged. The binary patch itself is not run on the console.
+Updated executable SHA256:
+5d630ce6c2d1ecb947a1c640f224e18c3e6ff9ebb442863e9c27d58abbe139b6
+
+Validation: emulate the actual ARM64 code with Unicorn using test_arm_curve.py.
+All 65,536 possible PCM samples were checked at all 11 volume levels with the
+feature both enabled and disabled, plus odd-length, empty and negative-length buffers.
+This verifies exact arithmetic, mute, limits, no overflow, and no writes past the buffer.
+Physical loudness and button operation should be confirmed on the console.

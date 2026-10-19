@@ -1,0 +1,15 @@
+# Release assets belong in GitHub Releases, not Git history.
+/dist/
+/vendor/
+*.zip
+*.tar.xz
+__pycache__/
+*.pyc
+# Local console data and diagnostics
+APPS/ScummVM_RGDSPlus/config/
+APPS/ScummVM_RGDSPlus/saves/
+APPS/ScummVM_RGDSPlus/games/
+APPS/ScummVM_RGDSPlus/cache/
+APPS/ScummVM_RGDSPlus/ScummVM_Arranque.txt
+.DS_Store
+Thumbs.db

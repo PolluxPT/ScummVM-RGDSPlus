@@ -1,0 +1,13 @@
+Upstream ScummVM 2026.4.0:
+https://downloads.scummvm.org/frs/scummvm/2026.4.0/scummvm-2026.4.0.tar.xz
+SHA256 cd660b34104da7f85ed0a11b7c6c2320c629bb87ee297935711ebc1e09731f12
+The upstream source archive and SDK flags were included in the full Menu Simples
+package. This patch replaces the earlier patch and applies to clean upstream.
+This incremental package updates the core and themes; engine binaries are unchanged.
+Volume behavior was informed by the primary author's stock RG DS port:
+https://github.com/omerkot/AirdomeRGDS/blob/main/docs/INSTALL_RGDS.md
+Native code here is newly written. It reads the 0..10 loader volume, scales signed
+16-bit audio in software, reads only volume-capable evdev devices without grabbing,
+and persists volume button changes to the same loader value. No ALSA mixer guesses.
+Volume DSP, key events, boundaries, external change and invalid input tested on ARM.
+Headless GUI and resource search passed; physical hardware tests remain necessary.

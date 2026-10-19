@@ -1,0 +1,22 @@
+ScummVM upstream stable 2026.4.0
+https://downloads.scummvm.org/frs/scummvm/2026.4.0/scummvm-2026.4.0.tar.xz
+SHA256 cd660b34104da7f85ed0a11b7c6c2320c629bb87ee297935711ebc1e09731f12
+
+Extract official archive, enter scummvm-2026.4.0, apply:
+  patch -p1 < ../rgds-2026.patch
+Build with ARM64 GCC13 and SDL2 development files; see config.mk,
+config.h and build-configure.log for configured libraries and flags.
+Replace workspace prefixes in config.mk for a different SDK location.
+All default stable engines are dynamic. Enable UNCACHED_PLUGINS in DEFINES
+for on-demand loading. PLUGIN_LDFLAGS must not contain the main executable's
+--unresolved-symbols=ignore-in-shared-libs option; plugins import core symbols.
+Decoder-only libtheora1.1.1 static library was built from the Xiph source
+https://downloads.xiph.org/releases/theora/libtheora-1.1.1.tar.bz2
+with encoder/examples disabled. Other library package versions and checksums
+are recorded in dependency-packages.json; copyright notices include source
+project locations. GCC C++ and exception runtime are bundled dynamically;
+SDL2 and the C library are supplied by Stock OS.
+ARM test commands: cross-compile calibration-test.cpp and touch-state-test.cpp
+with -I<source-root> -std=c++17, then run with qemu-aarch64 and an ARM64 sysroot.
+Core version, detection list and on-demand engines were exercised under QEMU
+with SDL dummy video/audio; actual games and hardware still require testing.
