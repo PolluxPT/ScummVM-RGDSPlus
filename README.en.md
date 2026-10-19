@@ -1,4 +1,6 @@
-<p align="center"><img src="APPS/Imgs/ScummVM.png" width="150" alt="ScummVM"></p>
+<img src="APPS/Imgs/ScummVM.png" width="150" alt="ScummVM">
+
+[⬇ Descarregar / Download](https://github.com/PolluxPT/ScummVM-RGDSPlus/releases/latest)
 
 # ScummVM for Anbernic RG DS+
 
