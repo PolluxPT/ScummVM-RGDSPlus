@@ -66,9 +66,8 @@ Calibração, preferências e lista de jogos ficam em `ScummVM_RGDSPlus/config`;
 
 Adaptação comunitária; não é uma release oficial do projeto ScummVM ou da Anbernic.
 
-## Imagens
+## Amostras
 
-### samples
 ![ ](docs/images/Sample-1.jpeg)
 ![ ](docs/images/Sample-2.jpeg)
 ![ ](docs/images/Sample-3.jpeg)
