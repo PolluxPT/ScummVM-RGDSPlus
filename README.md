@@ -69,5 +69,10 @@ Adaptação comunitária; não é uma release oficial do projeto ScummVM ou da A
 ## Imagens
 
 ### samples
-![Menu inicial do ScummVM](docs/images/Sample-1.jpeg)
+![ ](docs/images/Sample-1.jpeg)
 ![ ](docs/images/Sample-2.jpeg)
+![ ](docs/images/Sample-3.jpeg)
+![ ](docs/images/Sample-4.jpeg)
+![ ](docs/images/Sample-5.jpeg)
+![ ](docs/images/Sample-6.jpeg)
+![ ](docs/images/Sample-7.jpeg)
