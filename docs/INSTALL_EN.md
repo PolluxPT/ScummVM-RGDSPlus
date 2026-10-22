@@ -4,7 +4,7 @@
 
 ## Correct download
 
-Under **Releases**, download `ScummVM_RGDSPlus_v1.0.0.zip`. This ZIP contains only the `APPS` directory, ready for the card. Complete sources are a separate asset: `ScummVM_RGDSPlus_v1.0.0_Sources.zip`.
+Under **Releases**, download `ScummVM_RGDSPlus_v1.0.1.zip`. This ZIP contains only the `APPS` directory, ready for the card. Complete sources are a separate asset: `ScummVM_RGDSPlus_v1.0.1_Sources.zip`.
 
 ## TF2 / Games card
 
@@ -20,6 +20,8 @@ Check these paths on the card:
 - `Roms/APPS/Imgs/ScummVM.png`
 - `Roms/APPS/ScummVM_RGDSPlus/scummvm`
 
+Both the startup display menu and the ScummVM GUI default to English on a new installation. Existing language preferences are preserved on update.
+
 ## First use
 
 Use **Idioma / Language** at startup to change PT/EN. Your preference is saved. Choose **Lower screen only** or **Mirror both screens**. If no calibration exists, a nine-point assistant runs. Touch the centre of each target and lift the stylus between targets. A rejected calibration does not replace the previous one.
@@ -34,4 +36,4 @@ If calibration fails, keep an already saved calibration when touch is accurate; 
 
 If audio is quiet, increase physical levels gradually and also check the game's internal volume settings. Low levels are deliberately gentle.
 
-On exit, the launcher restores the previous backlight and touch settings. Confirmed compatibility is RG DS Plus with Stock OS V1.0 (20260915).
+Physical volume buttons use the curve 0.35 × (level / 10)². On exit, the launcher restores the system volume captured before launch, as well as the previous backlight and touch settings. Confirmed compatibility is RG DS Plus with Stock OS V1.0 (20260915).

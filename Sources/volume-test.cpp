@@ -5,12 +5,14 @@
 static void fileLevel(int n) { FILE *f=fopen(volumePath,"w"); assert(f); fprintf(f,"%d\n",n); fclose(f); }
 int main() {
  const int16_t values[]={INT16_MIN,-1000,-1,0,1,1000,INT16_MAX};
- for(int percent: {0,10,20,50,90,100}) {
+ enabled=true;
+ for(int percent=0;percent<=100;percent+=10) {
   gain.store(percent); unsigned char bytes[sizeof(values)+1]; memcpy(bytes,values,sizeof(values));bytes[sizeof(values)]=0xA7;
   rgdsApplyVolume(bytes,sizeof(bytes));
-  for(unsigned i=0;i<sizeof(values)/sizeof(values[0]);++i){ int16_t out;memcpy(&out,bytes+i*2,2);assert(out==int32_t(values[i])*percent/100); }
+  for(unsigned i=0;i<sizeof(values)/sizeof(values[0]);++i){ int16_t out;memcpy(&out,bytes+i*2,2);assert(out==int64_t(values[i])*percent*percent*35/1000000); }
   assert(bytes[sizeof(values)]==0xA7);
  }
+ enabled=false;unsigned char original[sizeof(values)];memcpy(original,values,sizeof(values));rgdsApplyVolume(original,sizeof(original));assert(!memcmp(original,values,sizeof(values)));
  char file[]="/tmp/rgds-volume-XXXXXX";int tmp=mkstemp(file);assert(tmp>=0);close(tmp);volumePath=file;enabled=true;
  for(int base: {0,5,10}) for(int key: {KEY_VOLUMEDOWN,KEY_VOLUMEUP}) {
   char events[]="/tmp/rgds-volume-events-XXXXXX";int fd=mkstemp(events);assert(fd>=0);
@@ -22,5 +24,5 @@ int main() {
  }
  keyCount=0;fileLevel(3);lastRead=0;rgdsVolumePoll();assert(gain.load()==30);
  fileLevel(11);int invalid;assert(!readLevel(invalid));unlink(file);
- puts("ARM volume tests passed: silence, PCM gain, signed extremes, odd byte, keys, boundaries, firmware save, external change, invalid input.");
+ puts("Volume tests passed: quadratic curve, silence, PCM gain, signed extremes, odd byte, keys, boundaries, firmware save, external change, invalid input.");
 }

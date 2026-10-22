@@ -2,9 +2,11 @@
 
 [English](INSTALL_EN.md) · [Início](../README.md)
 
+O menu inicial e a interface ScummVM arrancam em inglês numa instalação nova. As atualizações preservam os idiomas guardados.
+
 ## Download correto
 
-Em **Releases**, descarrega `ScummVM_RGDSPlus_v1.0.0.zip`. Dentro desse ZIP existe apenas a pasta `APPS`, pronta para o cartão. As fontes são um download separado: `ScummVM_RGDSPlus_v1.0.0_Sources.zip`.
+Em **Releases**, descarrega `ScummVM_RGDSPlus_v1.0.1.zip`. Dentro desse ZIP existe apenas a pasta `APPS`, pronta para o cartão. As fontes são um download separado: `ScummVM_RGDSPlus_v1.0.1_Sources.zip`.
 
 ## Cartão TF2 / Games
 
@@ -35,3 +37,5 @@ Se a calibração falhar, usa a que já ficou guardada quando o toque está prec
 Se o som estiver baixo, testa os níveis físicos progressivamente e verifica também os volumes internos do jogo. A curva é deliberadamente suave nos primeiros níveis.
 
 Ao sair, o launcher repõe a iluminação e o controlo de toque anteriores. A compatibilidade confirmada é a RG DS Plus com Stock OS V1.0 (20260915).
+
+O volume inicial do sistema é memorizado antes do arranque e reposto à saída. Durante a sessão, os botões físicos usam a curva 0,35 × (nível / 10)².

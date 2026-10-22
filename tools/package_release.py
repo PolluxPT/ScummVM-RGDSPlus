@@ -12,7 +12,7 @@ def safe(name):
 def write_zip(path,entries):
  with zipfile.ZipFile(path,'w',zipfile.ZIP_DEFLATED,compresslevel=6) as z:
   for name,data in sorted(entries.items()):
-   safe(name);i=zipfile.ZipInfo(name,(2026,10,19,0,0,0));i.compress_type=zipfile.ZIP_DEFLATED
+   safe(name);i=zipfile.ZipInfo(name,(2026,10,22,0,0,0));i.compress_type=zipfile.ZIP_DEFLATED
    executable=name.endswith('.sh') or name in ('APPS/ScummVM_RGDSPlus/scummvm','APPS/ScummVM_RGDSPlus/tools/rgds-screen-menu')
    i.external_attr=(0o100755 if executable else 0o100644)<<16;z.writestr(i,data)
 

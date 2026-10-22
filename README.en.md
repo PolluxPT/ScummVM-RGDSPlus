@@ -8,13 +8,15 @@
 
 Standalone **ScummVM 2026.4.0** for **RG DS Plus running Linux Stock OS V1.0 (20260915)**. Modern GUI, lower-screen stylus/touch support, and a choice of mirrored displays or upper backlight off.
 
-**Ready-to-play download:** open **Releases** and download **`ScummVM_RGDSPlus_v1.0.0.zip`**. The installation ZIP contains only `APPS`.
+**Ready-to-play download:** open **Releases** and download **`ScummVM_RGDSPlus_v1.0.1.zip`**. The installation ZIP contains only `APPS`.
 
 **Code → Download ZIP** and the automatic **Source code** downloads contain the development repository. To install, use the release asset named above. Programming knowledge is not required.
 
+On first use, both the display menu and the ScummVM GUI start in **English**. Existing language preferences are preserved. The PT/EN button controls the startup menu; change the ScummVM language separately in Global Options.
+
 ## Install or update
 
-1. Extract `ScummVM_RGDSPlus_v1.0.0.zip` on your computer.
+1. Extract `ScummVM_RGDSPlus_v1.0.1.zip` on your computer.
 2. Copy **the contents of `APPS`** into `Roms/APPS` on the **TF2 / Games** card.
 3. When updating, merge folders and replace supplied files. Keep your existing `ScummVM_RGDSPlus` directory, which holds your data.
 4. On the console, open **APPS → ScummVM**. On first use, complete touch calibration and add your games.
@@ -31,6 +33,7 @@ The card will contain `Roms/APPS/ScummVM.sh`, `Roms/APPS/ScummVM_RGDSPlus/`, and
 - **Mirror both screens:** same picture on both panels; touch remains on the lower screen. The upper copy is capped at 20 frames/s and may reduce performance, particularly in 3D.
 - Persistent **Idioma / Language — PT / EN** button at startup. The ScummVM GUI language is selected separately in its Global Options.
 - Physical volume buttons and a gentle quadratic curve: `0.35 × (Stock level / 10)²`. Level 0 is silent; maximum gain is 35% of the signal.
+- The system volume is captured before launch and restored on exit; session changes do not carry over to the console menu.
 - One `ScummVM_RGDSPlus/ScummVM_Arranque.txt` log, overwritten on each launch.
 - Maintainer-supplied icon at `APPS/Imgs/ScummVM.png`.
 
@@ -43,7 +46,7 @@ The card will contain `Roms/APPS/ScummVM.sh`, `Roms/APPS/ScummVM_RGDSPlus/`, and
 | L2 | Virtual keyboard |
 | Select | Original Sam & Max menu; game-dependent |
 | D-pad | Movement in Grim Fandango; game-dependent |
-| Volume + / − | Session volume and saved Stock level |
+| Volume + / − | Session volume; original Stock level restored on exit |
 | L + R | Exit observed with this Stock integration |
 
 Sam & Max and Grim Fandango have been run on the test console. Compatibility and performance depend on the game; an included engine does not guarantee flawless support for every game it can detect.
@@ -60,7 +63,7 @@ Calibration, preferences and the game list live in `ScummVM_RGDSPlus/config`; de
 
 - Upstream ScummVM and credits: [scummvm.org](https://www.scummvm.org/).
 - Port code, patches and build configuration: `Sources/`; shell scripts: `APPS/`.
-- Complete sources, including the original upstream archive, are provided as the release asset **`ScummVM_RGDSPlus_v1.0.0_Sources.zip`**. Keep this archive on your computer.
+- Complete sources, including the original upstream archive, are provided as the release asset **`ScummVM_RGDSPlus_v1.0.1_Sources.zip`**. Keep this archive on your computer.
 - [Licence](LICENSE), [credits](CREDITS.md), [developer notes](docs/DEVELOPMENT_PT_EN.md).
 - For a report, include firmware, game and release version, and attach `ScummVM_Arranque.txt` before launching again. Remove personal paths from the log if present.
 

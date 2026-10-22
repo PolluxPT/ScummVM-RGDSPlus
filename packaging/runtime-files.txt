@@ -383,3 +383,4 @@ APPS/ScummVM_RGDSPlus/tools/calibrate.sh
 APPS/ScummVM_RGDSPlus/tools/rgds-screen-menu
 APPS/ScummVM_RGDSPlus/tools/screen-control.sh
 APPS/ScummVM_RGDSPlus/touch-control.sh
+APPS/ScummVM_RGDSPlus/tools/volume-control.sh

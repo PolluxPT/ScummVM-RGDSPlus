@@ -31,8 +31,8 @@ static int hit_button(int x,int y){
  return -1;
 }
 static void load_language(void){
- english=0;FILE*f=fopen(languagepath,"r");if(!f)return;
- char code[16]={0};if(fscanf(f,"%15s",code)==1)english=!strcmp(code,"en");fclose(f);
+ english=1;FILE*f=fopen(languagepath,"r");if(!f)return;
+ char code[16]={0};if(fscanf(f,"%15s",code)==1)english=strcmp(code,"pt")!=0;fclose(f);
 }
 static void toggle_language(void){
  int next=!english;

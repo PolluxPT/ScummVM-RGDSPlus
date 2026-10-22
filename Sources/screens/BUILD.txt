@@ -22,3 +22,18 @@ RC2 lower helper creates upper black surface, waits for first lower frame + 250m
 then writes upper zero followed by saved lower brightness; restores both on SDL_Quit.
 The parent EXIT trap/guardian also restores both. New startup log uses truncate-once
 and O_APPEND for parent/child so calibration output cannot be overwritten after return.
+
+Release v1.0.1 (2026-10-22): menu defaults to EN without a valid saved
+preference. Saved pt/en values are respected. Only rgds-screen-menu is rebuilt;
+the ScummVM core, plugins and display/audio libraries are reused from v1.0.0.
+This release's menu build uses Zig 0.15.2:
+  zig cc -target aarch64-linux-gnu.2.34 -O2 -std=c11 menu.c -ldl -o rgds-screen-menu
+The rebuilt executable is included at APPS/ScummVM_RGDSPlus/tools/rgds-screen-menu
+in the repository so the packaging overlay cannot silently reuse the old menu.
+Host checks:
+  cc -O2 -std=c11 tests/language.c -ldl -o /tmp/rgds-language-test
+  /tmp/rgds-language-test
+  cc -O2 -std=c11 tests/menu-state.c -ldl -o /tmp/rgds-menu-state-test
+  /tmp/rgds-menu-state-test
+From repository root: python3 tools/test_language_defaults.py
+Physical-console validation of v1.0.1 remains required.

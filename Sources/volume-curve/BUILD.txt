@@ -34,3 +34,16 @@ All 65,536 possible PCM samples were checked at all 11 volume levels with the
 feature both enabled and disabled, plus odd-length, empty and negative-length buffers.
 This verifies exact arithmetic, mute, limits, no overflow, and no writes past the buffer.
 Physical loudness and button operation should be confirmed on the console.
+
+v1.0.1 launcher addition: tools/volume-control.sh captures the original Stock
+openbor_volume (0..10) before any ScummVM process is launched and restores it
+on EXIT, including handled INT/TERM/HUP and error exits. The capture is reused
+through calibration/relaunches. Core button writes remain active during the
+session, but the final system level is now the pre-launch value. A forced power
+loss or SIGKILL cannot run shell cleanup.
+Validation from repository root:
+  python3 tools/test_volume_restore.py
+  g++ -O2 -std=c++11 -ISources/port Sources/volume-test.cpp -o /tmp/rgds-volume-test
+  /tmp/rgds-volume-test
+The existing volume-test.cpp now checks the quadratic curve (its old linear
+expectations predated the curve update), physical-key events and level limits.

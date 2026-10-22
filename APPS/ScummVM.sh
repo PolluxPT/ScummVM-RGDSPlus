@@ -25,9 +25,14 @@ fi
 shopt -u nullglob
 : > "$log" || exit 1
 exec >> "$log" 2>&1
-printf 'ScummVM RG DS Plus 2026.4.0 - Versao final 4 - Stock RG DS Plus / registo unico\nData: %s\n' "$stamp"
+printf 'ScummVM RG DS Plus 2026.4.0 - Port v1.0.1 - Stock RG DS Plus / registo unico\nData: %s\n' "$stamp"
 printf 'Pasta: %s\n' "$app_dir"
 printf 'RGDS volume: curve=quadratic ceiling=0.35; gain=0.35*(level/10)^2\n'
+. "$app_dir/tools/volume-control.sh" || exit 1
+trap rgds_volume_restore EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM HUP
+rgds_volume_save /sys/class/anbernic_misc/openbor_volume || exit 1
 if [ ! -f "$app_dir/scummvm" ]; then
     printf '%s\n' 'Falta a pasta ScummVM_RGDSPlus junto de ScummVM.sh.'
     exit 1
@@ -69,7 +74,7 @@ if [ ! -f "$cfg" ]; then
 fullscreen=true
 gui_theme=scummremastered
 gui_scale=125
-gui_language=pt_PT
+gui_language=en
 gfx_mode=default
 themepath=$app_dir/data
 pluginspath=$app_dir/plugins
@@ -86,11 +91,17 @@ EOF
 fi
 if [ ! -f "$app_dir/config/gui-2026-migrated" ]; then
     cp "$cfg" "$app_dir/config/scummvm-before-2026.ini" || exit 1
-    awk -v data="$app_dir/data" -v plugins="$app_dir/plugins" '
+    # Keep the existing global GUI language during legacy theme migration.
+    gui_language=$(awk '
+        /^\[/ { section=($0=="[scummvm]") }
+        section && /^gui_language=/ { sub(/^gui_language=/, ""); sub(/\r$/, ""); if(length($0)) { print; exit } }
+    ' "$cfg")
+    gui_language=${gui_language:-en}
+    awk -v language="$gui_language" -v data="$app_dir/data" -v plugins="$app_dir/plugins" '
         function options() {
             print "gui_theme=scummremastered";
             print "gui_scale=125";
-            print "gui_language=pt_PT";
+            print "gui_language=" language;
             print "gfx_mode=default";
             print "themepath=" data;
             print "extrapath=" data;
@@ -133,7 +144,7 @@ printf '\n=== Versao ===\n'
 ./scummvm --config="$cfg" --version || exit 1
 . "$app_dir/touch-control.sh" || exit 1
 . "$app_dir/tools/screen-control.sh" || exit 1
-rgds_cleanup() { rgds_screens_restore; rgds_touch_restore; }
+rgds_cleanup() { rgds_screens_restore; rgds_touch_restore; rgds_volume_restore; }
 trap rgds_cleanup EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM HUP
